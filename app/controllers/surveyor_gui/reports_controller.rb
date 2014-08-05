@@ -4,7 +4,7 @@ include Math
 class SurveyorGui::ReportsController < ApplicationController
   def preview
     response_qty = 5 
-    @title = "Preview Report for "+response_qty.to_s+" responses"
+    @title = "Preview Report for "+response_qty.to_s+" randomized responses"
     @survey = Survey.find(params[:survey_id])
     user_id = defined?(current_user) ? current_user.id : 1 
     ResponseSet.where('survey_id = ? and test_data = ? and user_id = ?',report_params[:survey_id],true, user_id).each {|r| r.destroy}
