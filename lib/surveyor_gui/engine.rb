@@ -20,7 +20,7 @@ module SurveyorGui
         require_dependency(c)
       end
     end
-    initializer "surveyor_guie.assets.precompile" do |app|
+    initializer "surveyor_gui.assets.precompile" do |app|
       app.config.assets.precompile += %w[surveyor_all.js surveyor_gui_all.js surveyor_all.css surveyor_gui_all.css surveyor_add_ons.js surveyor_add_ons.css *.png *.gif]
     end
   end
