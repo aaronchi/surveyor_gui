@@ -1,0 +1,17 @@
+<br />
+<div class="column3">
+  <div class="shadebox round">
+    <div id="Survey">
+      <h1 class="round-top"><%= @title %></h1>
+      <h2><%= @survey.title %></h2>
+      <div class="show_survey_report_data_button">
+        <button value="Show Data"  class = 'green180x24' > 
+      </div>       
+      <div class="report_data">
+        < button value="Hide Data" class = 'green180x24' > 
+      </div>           
+      <%= render 'show_report' %>
+    </div>
+  </div>
+</div>
+
