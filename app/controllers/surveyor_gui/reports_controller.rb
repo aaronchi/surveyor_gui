@@ -10,7 +10,7 @@ class SurveyorGui::ReportsController < ApplicationController
     ResponseSet.where('survey_id = ? and test_data = ? and user_id = ?',report_params[:survey_id],true, user_id).each {|r| r.destroy}
     response_qty.times.each {
       @response_set = ResponseSet.create(:survey => @survey, :user_id => user_id, :test_data => true)
-      generate_1_result_per_question(@response_set, @survey, false)
+      generate_1_result_per_question(@response_set, @survey)
     }
     @response_sets = ResponseSet.where('survey_id = ? and test_data = ? and user_id = ?',params[:survey_id],true, user_id)
     @responses = Response.joins(:response_set, :answer).where('user_id = ? and survey_id = ? and test_data = ?',user_id,params[:survey_id],true)
@@ -61,48 +61,28 @@ responses.datetime_value, responses.string_value')
   end
 
   private
+
+  RESPONSE_GENERATOR = {
+    pick_one: ->(response, response_set, q, context){ response = response_set.responses.build(question_id: q.id, answer_id: context.send(:random_pick, q)) },
+    pick_any: ->(response, response_set, q, context){ response = context.send(:random_anys, response, response_set, q) },
+    dropdown: ->(response, response_set, q, context){ response = response_set.responses.build(question_id: q.id, answer_id: context.send(:random_pick, q)) },
+    number:   ->(response, response_set, q, context){ response.integer_value = rand(100) },
+    string:   ->(response, response_set, q, context){ response.string_value = context.send(:random_string) },
+    box:      ->(response, response_set, q, context){ response.text_value = context.send(:random_string) },
+    date:     ->(response, response_set, q, context){ response.datetime_value = context.send(:random_date) },
+    datetime: ->(response, response_set, q, context){ response.datetime_value = context.send(:random_date) },
+    time:     ->(response, response_set, q, context){ response.datetime_value = context.send(:random_date) },
+    file:     ->(response, response_set, q, context){ context.send(:make_blob, response, false) },
+    stars:    ->(response, response_set, q, context){ response = response_set.responses.build(:question_id => q.id, :integer_value => rand(5)+1, :answer_id => q.answers.first.id)}
+  }
   
-  def generate_1_result_per_question(response_set, survey, show_blob)
+  def generate_1_result_per_question(response_set, survey)
     @survey.survey_sections.each do |ss|
       ss.questions.each do |q|
-        case q.pick
-        when 'none'
-            if q.answers.first
-            response = response_set.responses.build(:question_id => q.id, :answer_id => q.answers.first.id)
-            case q.answers.first.response_class
-            when 'integer'
-              response.integer_value = rand(100)
-            when 'float'
-              response.float_value = rand(100)
-            when 'string'
-              response.string_value = random_string
-            when 'text'
-              response.text_value = random_string
-            when 'date'
-              response.datetime_value = random_date
-            when 'blob'
-              response.save!
-              response.blob.store!(File.new(Rails.public_path+'/images/regulations.jpg')) if show_blob
-            end
-            response.save!
-          end
-        when 'one'
-          if q.display_type=='stars'
-            response = response_set.responses.build(:question_id => q.id, :integer_value => rand(5)+1, :answer_id => q.answers.first.id)
-          else
-            response = response_set.responses.build(:question_id => q.id, :answer_id => random_pick(q))
-          end
-          response.save!
-        when 'any'
-          if !q.answers.blank?
-            how_many = random_pick_count(q)
-            how_many.times {
-              already_checked = response_set.responses.where('question_id=?',q.id).collect(&:answer_id)
-              response = response_set.responses.build(:question_id => q.id, :answer_id => random_pick(q,already_checked))
-              response.save!
-            }
-          end
-        end
+        response = response_set.responses.build(:question_id => q.id, :answer_id => q.answers.first.id)
+        RESPONSE_GENERATOR[q.question_type_id].call(response, response_set, q, self)
+        p "q type #{q.question_type_id} response #{response.valid?}"
+        response.save! if response.valid?
       end
     end
   end
@@ -144,6 +124,24 @@ responses.datetime_value, responses.string_value')
   def random_pick_count(question)
     answers = question.answers
     return rand(answers.count)+1
+  end
+
+  def make_blob(response, show_blob)
+    response.save!
+    response.blob.store!(File.new(Rails.public_path+'/images/regulations.jpg')) if show_blob
+  end
+
+  def random_anys(response, response_set, q)
+    if !q.answers.blank?
+      how_many = random_pick_count(q)
+      how_many.times {
+        already_checked = response_set.responses.where('question_id=?',q.id).collect(&:answer_id)
+        response = response_set.responses.build(:question_id => q.id, :answer_id => random_pick(q,already_checked))
+        response.save!
+      }
+    else
+      response = nil
+    end
   end
   
   def histogram(in_arr, label=nil)
