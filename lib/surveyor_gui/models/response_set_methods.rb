@@ -27,6 +27,10 @@ module SurveyorGui
              :show_mandatory => arr[0].map{|d| d.question_group_id.nil? ? (d.question.is_mandatory? ? "q_#{d.question_id}" : nil) : "g_#{d.question_group_id}"},
              :hide => arr[1].map{|d| d.question_group_id.nil? ? "q_#{d.question_id}" : "g_#{d.question_group_id}"}}
       end
+
+      def report_user_name
+        self.user_id
+      end
     end
   end
 end

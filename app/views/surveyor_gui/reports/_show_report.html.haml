@@ -14,7 +14,7 @@
             = @question_no
             )&nbsp;#{q.text}
           - @question_no += 1
-        - if q.pick == 'any' || q.pick == 'one' || q.answers.first.response_class == 'integer' || q.answers.first.response_class == 'float'
+        - if [:pick_one,:pick_any,:dropdown,:number,:date,:datetime,:time].include? q.question_type_id
           %tr{:class => q.surveyresponse_class(@trial_response_sets)}
             %td &nbsp;
           %tr{:class => q.surveyresponse_class(@trial_response_sets)}
@@ -35,58 +35,40 @@
                       = "options.tooltip.formatter = function() {return '<b>'+ this.x +'</b>: '+ this.y;}".html_safe
           %tr
             %td &nbsp;
-          - if q.answers.first && (q.answers.first.response_class == 'integer' || q.answers.first.response_class == 'float')
-            - prefix = q.answers.first.text.split('|')[0]
-            - suffix = q.answers.first.text.split('|')[1]
-            %tr.report_data.report_data_display
-              %td
-              %td
-              %td
-                %table
-                  %tr{:style => "font-weight:bold;"}
-                    %td User Id
-                    %td Response
-                  - @responses.where(:question_id => q.id).each do |r|
-                    %tr
-                      %td= r.response_set.user_id
-                      %td.table_number
-                        = prefix if prefix
-                        - if r.integer_value || r.float_value
-                          = "%g" % (r.integer_value || r.float_value)
-                        - else
-                          = r.string_value || r.text_value || r.datetime_value
-                          \&nbsp;
-                        = suffix if suffix
+          - if [:number,:date,:datetime,:time].include? q.question_type_id
+            = render "report_data", q: q
             %tr
               %td
               %td
               %td
-                %table.report_data_functions
-                  %tr
-                    %td{:style => "font-weight:bold;"} Total
-                    %td.table_number
-                      = prefix if prefix
-                      = "%g" % @responses.where(:question_id => q.id).collect(&:response_value).sum
-                      \&nbsp;#{suffix if suffix}
+                %table.report_data_function
+                  - if q.question_type_id == :numbers
+                    %tr
+                      %td{:style => "font-weight:bold;"} Total
+                      %td.table_number
+                        = q.prefix
+                        = stats(q, :sum) 
+                        \&nbsp;#{q.suffix}
                   %tr
                     %td{:style => "font-weight:bold;"} Min
                     %td.table_number
-                      = prefix if prefix
-                      = "%g" % @responses.where(:question_id => q.id).collect(&:response_value).min
-                      \&nbsp;#{suffix if suffix}
+                      = q.prefix
+                      = stats(q, :min) 
+                      \&nbsp;#{q.suffix}
                   %tr
                     %td{:style => "font-weight:bold;"} Max
                     %td.table_number
-                      = prefix if prefix
-                      = "%g" % @responses.where(:question_id => q.id).collect(&:response_value).max
-                      \&nbsp;#{suffix if suffix}
+                      = q.prefix
+                      = stats(q, :max) 
+                      \&nbsp;#{q.suffix}
                   %tr
                     %td{:style => "font-weight:bold;"} Average
                     %td.table_number
-                      = prefix if prefix
-                      = "%g" % @responses.where(:question_id => q.id).collect(&:response_value).average
-                      \&nbsp;#{suffix if suffix}
+                      = q.prefix
+                      = stats(q, :average) 
+                      \&nbsp;#{q.suffix}
           - elsif q.pick=='any' || q.pick=='one'            
+            = render "report_data", q: q
             %tr
               %td
               %td
