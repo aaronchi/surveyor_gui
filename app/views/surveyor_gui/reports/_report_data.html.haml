@@ -1,0 +1,22 @@
+%tr.report_data.report_data_display
+  %td
+  %td
+  %td
+    %table
+      %tr{:style => "font-weight:bold;"}
+        %td User Id
+        %td Response
+      - @responses.where(:question_id => q.id).each do |r|
+        %tr
+          %td= r.response_set.user_id
+          %td.table_number
+            = q.prefix
+            - if [:number, :date, :datetime, :time].include? q.question_type_id
+              = format_stats(q, r.response_value.to_f) 
+            - else
+              = r.response_value
+              \&nbsp;
+            = q.suffix
+%tr
+  %td
+    \&nbsp;
