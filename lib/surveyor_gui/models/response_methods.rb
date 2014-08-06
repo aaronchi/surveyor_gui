@@ -19,19 +19,19 @@ module SurveyorGui
         base.send :mount_uploader, :blob, BlobUploader
       end
 
+      VALUE_TYPE = ['float', 'integer', 'string', 'datetime', 'text']
+
       def response_value
-        if float_value
-          float_value
-        elsif integer_value
-          integer_value
-        elsif string_value
-          string_value
-        elsif datetime_value
-          datetime_value
-        elsif text_value
-          text_value
-        elsif string_value
-          string_value
+        if self.question.pick=='none'
+          VALUE_TYPE.each do |value_type|
+            value_attribute = value_type+'_value'
+            if instance_eval(value_attribute)
+              return instance_eval(value_attribute)
+            end
+          end
+          nil
+        else
+          return self.answer.text
         end
       end
 

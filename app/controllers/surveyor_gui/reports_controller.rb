@@ -45,7 +45,7 @@ LEFT OUTER JOIN response_sets ON response_sets.id = responses.response_set_id").
     single_choice_responses = Response.joins(:response_set).where('survey_id = ? and test_data = ?',survey_id,test).select('responses.question_id,
 responses.float_value,
 responses.integer_value,
-responses.datetime_value')
+responses.datetime_value, responses.string_value')
     @chart = {}
     colors = ['#4572A7', '#AA4643', '#89A54E', '#80699B', '#3D96AE', '#DB843D', '#92A8CD', '#A47D7C', '#B5CA92']
     questions.each do |q|
@@ -53,7 +53,7 @@ responses.datetime_value')
           generate_pie_chart(q, multiple_choice_responses)
       elsif q.pick == 'any'
           generate_bar_chart(q, multiple_choice_responses, colors)
-      elsif q.answers.first && (q.answers.first.response_class == 'integer' || q.answers.first.response_class == 'float' )
+      elsif [:number,:date,:datetime,:time].include? q.question_type_id
           generate_histogram_chart(q, single_choice_responses)
       else
       end
@@ -150,8 +150,8 @@ responses.datetime_value')
     #floats round to 4
     out_arr = []
     if !in_arr.blank?
-      min = in_arr.collect(&:response_value).min
-      max = in_arr.collect(&:response_value).max
+      min = in_arr.collect(&:response_value).min.to_f
+      max = in_arr.collect(&:response_value).max.to_f
       max = max + max.abs*0.00000000001
       count = in_arr.count(:id)
       distribution = sqrt(count).round
@@ -163,7 +163,7 @@ responses.datetime_value')
         range = upper_bound
         out_arr[index]= {
           :x => trunc_range(lower_bound).to_s+' to '+trunc_range(upper_bound).to_s+' '+label.to_s,
-          :y => in_arr.select {|v| v.response_value >= lower_bound && v.response_value < upper_bound}.count
+          :y => in_arr.select {|v| v.response_value.to_f >= lower_bound && v.response_value.to_f < upper_bound}.count
         }
       end
     end
@@ -229,45 +229,8 @@ responses.datetime_value')
     end
   end
   
-  
-  def generate_financial_chart
-    colors = ['#4572A7', '#AA4643', '#89A54E', '#80699B', '#3D96AE', '#DB843D', '#92A8CD', '#A47D7C', '#B5CA92']
-    bararray = []
-    @evaluation_institution.financial_scenarios.each_with_index do |fs, index|
-      total_cost = 0
-      fs.fs_products.each do |fsp|
-        extended_cost = fsp.unit_cost_in_dollars * fsp.estimated_annual_usage
-        total_cost = total_cost + extended_cost
-      end
-      adjusted_cost = total_cost + fs.other_costs_in_dollars - fs.anticipated_savings_in_dollars
-      bararray[index]= {:y=> adjusted_cost, :color => colors[index].to_s}
-    end
-    @financial_chart = LazyHighCharts::HighChart.new('graph') do |f|
-      f.options[:chart][:defaultSeriesType] = 'column'
-      f.options[:legend][:enabled]=false
-      f.options[:title][:text] = "Scenario Comparison"
-      f.options[:xAxis][:categories] = @evaluation_institution.financial_scenarios.each_with_index.map{|fs, index| "Scenario "+(index+1).to_s+": " + (index==0 ? @evaluation_institution.evaluation.name : fs.name)}
-      f.options[:xAxis][:labels] = {:rotation=> -45, :align => 'right', :style=>{:fontSize=>"14pt", :fontWeight=>"bold"}}
-      f.options[:yAxis][:min] = 0
-      f.options[:yAxis][:title] = {:text => 'Total Cost'}
-      f.plot_options(
-        :pointPadding=>true,
-        :borderWidth => 0,
-        :enableMouseTracking => false,
-        :shadow => false,
-        :animation => false,
-        :stickyTracking => false
-      )
-      f.series(
-        :data => bararray,
-        :dataLabels => {
-          :enabled=>true
-          } )
-    end
-  end
-  
   def generate_histogram_chart(q, responses)
-    suffix = q.answers.first.text.split('|')[1]
+    suffix = q.suffix
     histarray = histogram(responses.where(:question_id => q.id), suffix)
     @chart[q.id.to_s] = LazyHighCharts::HighChart.new('graph') do |f|
       f.options[:chart][:defaultSeriesType] = 'column'
