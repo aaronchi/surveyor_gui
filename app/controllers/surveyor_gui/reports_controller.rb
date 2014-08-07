@@ -64,10 +64,10 @@ responses.string_value')
   private
 
   RESPONSE_GENERATOR = {
-    pick_one: ->(response, response_set, q, context){ response_set.responses.create(question_id: q.id, answer_id: context.send(:random_pick, q)) },
+    pick_one: pick_one = ->(response, response_set, q, context){ response_set.responses.create(question_id: q.id, answer_id: context.send(:random_pick, q)) },
     pick_any: ->(response, response_set, q, context){ context.send(:random_anys, response, response_set, q) },
-    dropdown: ->(response, response_set, q, context){ response_set.responses.create(question_id: q.id, answer_id: context.send(:random_pick, q)) },
-    slider:   ->(response, response_set, q, context){ response_set.responses.create(question_id: q.id, answer_id: context.send(:random_pick, q)) },
+    dropdown: pick_one,
+    slider:   pick_one,
     number:   ->(response, response_set, q, context){ response.integer_value = rand(100); response.save },
     string:   ->(response, response_set, q, context){ response.string_value = context.send(:random_string); response.save },
     box:      ->(response, response_set, q, context){ response.text_value = context.send(:random_string); response.save },
