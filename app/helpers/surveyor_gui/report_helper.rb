@@ -10,8 +10,8 @@ module SurveyorGui::ReportHelper
   STAT_FORMATS = {
     number: "%g",
     date: "%m-%d-%y",
-    time: "%hh:%mm:%ss",
-    datetime: "%m-%d-%y %hh:%mm:%ss"
+    time: "%I:%M:%S %P",
+    datetime: "%m-%d-%y %I:%M:%S %P"
   }
 
   def question_should_display(q)
