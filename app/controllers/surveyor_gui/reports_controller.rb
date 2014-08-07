@@ -22,6 +22,20 @@ class SurveyorGui::ReportsController < ApplicationController
     render :show    
   end
 
+  def show
+    @survey = Survey.find(params[:id])
+    user_id = report_params[:user_id] || 1
+    @response_sets = ResponseSet.where(survey_id: @survey.id, user_id: user_id, test_data: false)
+    @responses = Response.joins(:response_set, :answer).where('user_id = ? and survey_id = ? and test_data = ?',user_id,@survey.id,false)  
+    @title = "Show report for #{@survey.title}"
+    if @responses.count > 0
+      generate_report(@survey.id, false)
+    else
+      flash[:error] = "No responses have been collected for this survey"
+      redirect_to surveyforms_path 
+    end
+  end
+
   def generate_report(survey_id, test)
     questions = Question.joins(:survey_section).where('survey_sections.survey_id = ?', survey_id)
 # multiple_choice_responses = Response.joins(:response_set, :answer).where('survey_id = ? and test_data = ?',survey_id,test).group('responses.question_id','answers.id','answers.text').select('responses.question_id, answers.id, answers.text as text, count(*) as answer_count').order('responses.question_id','answers.id')
@@ -75,7 +89,8 @@ responses.string_value')
     datetime: ->(response, response_set, q, context){ response.datetime_value = context.send(:random_date); response.save },
     time:     ->(response, response_set, q, context){ response.datetime_value = context.send(:random_date); response.save },
     file:     ->(response, response_set, q, context){ context.send(:make_blob, response, false) },
-    stars:    ->(response, response_set, q, context){ response_set.responses.create(:question_id => q.id, :integer_value => rand(5)+1, :answer_id => q.answers.first.id)}
+    stars:    ->(response, response_set, q, context){ response_set.responses.create(:question_id => q.id, :integer_value => rand(5)+1, :answer_id => q.answers.first.id)},
+    grid:     ->(){}
   }
   
   def generate_1_result_per_question(response_set, survey)
