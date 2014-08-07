@@ -160,7 +160,7 @@ module SurveyorGui
           response_class='answer'
         end
         if self.answers.blank?
-          self.answers_attributes={'0'=>{'response_class'=>response_class}}
+          self.answers_attributes={'0'=>{'text'=>'default', 'response_class'=>response_class}}
         else
           self.answers.map{|a|a.response_class=response_class}
         end

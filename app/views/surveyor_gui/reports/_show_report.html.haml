@@ -14,7 +14,7 @@
             = @question_no
             )&nbsp;#{q.text}
           - @question_no += 1
-        - if [:pick_one,:pick_any,:dropdown,:number,:date,:datetime,:time].include? q.question_type_id
+        - if [:pick_one,:pick_any,:dropdown,:number,:date,:datetime,:time,:stars].include? q.question_type_id
           %tr{:class => q.surveyresponse_class(@trial_response_sets)}
             %td &nbsp;
           %tr{:class => q.surveyresponse_class(@trial_response_sets)}
@@ -23,7 +23,7 @@
             %td
               - if q.display_type=='stars'
                 - 10.times.each do |index|
-                  %input {name: "star#{q.id.to_s}", type: "radio", class: "star {split:2}", disabled: "disabled", checked: (index+1)==star_average(@responses,q) ? "checked" : nil} 
+                  %input{name: "star#{q.id.to_s}", type: "radio", class: "star {split:2}", disabled: "disabled", checked: (index+1)==star_average(@responses,q) ? "checked" : nil} 
               - else
                 %div{:id => "hi_chart#{q.id}", :style => "height:410px; margin: 0 2em; clear:both; min-width: 800px"}
                   = high_chart("hi_chart"+q.id.to_s , @chart[q.id.to_s]) do
@@ -68,6 +68,22 @@
                       = q.prefix
                       = response_formatter.stats(:average) 
                       \&nbsp;#{q.suffix}
+          - elsif q.question_type_id == :stars
+            %tr.report_data.report_data_display
+              %td
+              %td
+              %td
+                %table
+                  %tr{:style => "font-weight:bold;"}
+                    %td User Id
+                    %td Response
+                  - @responses.where(:question_id => q.id).each do |r|
+                    %tr
+                      %td= r.response_set.user_id
+                      %td
+                        - 5.times.each do |index|
+                          %input{name: "star#{'d1'+r.id.to_s}", type: "radio", class: "star", disabled: "disabled", checked:  ( (index+1)== r.integer_value ? "checked" : nil )}
+
           - elsif q.pick=='any' || q.pick=='one'            
             = render "report_data", q: q
             %tr
@@ -99,11 +115,7 @@
                     %tr
                       %td= r.response_set.user_id
                       %td
-                        - if q.display_type=='stars'
-                          - 5.times.each do |index|
-                            %input{name: "star#{'d1'+r.id.to_s}", type: "radio", class: "star", disabled: "disabled", checked:  ( (index+1)== r.integer_value ? "checked" : nil )}
-                        - else
-                          = r.answers.first.text
+                        = r.answers.first.text
           %tr
             %td &nbsp;
         - elsif q.answers.first.response_class == 'blob'
