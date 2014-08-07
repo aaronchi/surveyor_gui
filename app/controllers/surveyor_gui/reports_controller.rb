@@ -144,34 +144,6 @@ responses.datetime_value, responses.string_value')
     end
   end
   
-  def histogram(in_arr, label=nil)
-    #floats round to 4
-    out_arr = []
-    if !in_arr.blank?
-      min = in_arr.collect(&:response_value).min.to_f
-      max = in_arr.collect(&:response_value).max.to_f
-      max = max + max.abs*0.00000000001
-      count = in_arr.count(:id)
-      distribution = sqrt(count).round
-      range = min
-      step = ((max-min)/distribution)
-      distribution.times do |index|
-        lower_bound = range
-        upper_bound = range+step
-        range = upper_bound
-        out_arr[index]= {
-          :x => trunc_range(lower_bound).to_s+' to '+trunc_range(upper_bound).to_s+' '+label.to_s,
-          :y => in_arr.select {|v| v.response_value.to_f >= lower_bound && v.response_value.to_f < upper_bound}.count
-        }
-      end
-    end
-    return out_arr
-  end
-  
-  def trunc_range(num)
-    return (num*10000000000).to_i/10000000000
-  end
-  
   def generate_pie_chart(q, responses)
     piearray = []
     responses.where(:question_id => q.id).each_with_index do |a, index|
@@ -229,7 +201,7 @@ responses.datetime_value, responses.string_value')
   
   def generate_histogram_chart(q, responses)
     suffix = q.suffix
-    histarray = histogram(responses.where(:question_id => q.id), suffix)
+    histarray = HistogramArray.new(q, responses.where(:question_id => q.id), suffix).calculate
     @chart[q.id.to_s] = LazyHighCharts::HighChart.new('graph') do |f|
       f.options[:chart][:defaultSeriesType] = 'column'
       f.options[:title][:text] = 'Histogram for "'+q.text+'"'
@@ -257,4 +229,76 @@ responses.datetime_value, responses.string_value')
     @report_params ||= params.permit(:survey_id, :id)
   end
       
+end
+
+class HistogramArray
+  def initialize(question, in_arr, label=nil)
+    @out_arr = []
+    @in_arr = in_arr
+    return if in_arr.blank?
+    @question = question
+    set_min
+    set_max
+    set_count
+    set_distribution
+    set_step
+  end
+
+  def calculate
+    if !@in_arr.blank?
+      @distribution.times do |index|
+        refresh_range
+        set_x_label
+        @out_arr[index]= {
+          :x => @x_label,
+          :y => @in_arr.select {|v| v.response_value.to_f >= @lower_bound && v.response_value.to_f < @upper_bound}.count
+        }
+      end
+    end
+    return @out_arr
+  end
+
+  private
+
+  def set_min
+    @min = @range = @in_arr.collect(&:response_value).min.to_f
+  end
+
+  def set_max
+    @max = @in_arr.collect(&:response_value).max.to_f
+    @max = @max + @max.abs*0.00000000001
+  end
+
+  def set_count
+    @count = @in_arr.count(:id)
+  end
+
+  def set_distribution
+    @distribution = sqrt(@count).round
+  end
+
+  def set_step
+    @step = ((@max-@min)/@distribution)
+  end
+  
+  def refresh_range
+    @lower_bound = @range
+    @upper_bound = @range+@step
+    @range = @upper_bound
+  end    
+    
+  def trunc_range(num)
+    return (num*10000000000).to_i/10000000000
+  end
+
+  def set_x_label
+    if @question.question_type_id == :number
+      @x_label = trunc_range(@lower_bound).to_s+' to '+trunc_range(@upper_bound).to_s+' '+@label.to_s
+    else
+      response_formatter = ReportFormatter.new(@question, @in_arr)
+      lower_bound = response_formatter.format_stats(@lower_bound)
+      upper_bound = response_formatter.format_stats(@upper_bound)
+      @x_label = lower_bound+' to '+upper_bound+' '+@label.to_s
+    end 
+  end
 end
