@@ -42,10 +42,11 @@ LEFT OUTER JOIN response_sets ON response_sets.id = responses.response_set_id").
                                                 group("answers.question_id, answers.id, answers.text").
                                                 order("answers.question_id, answers.id")
 
-    single_choice_responses = Response.joins(:response_set).where('survey_id = ? and test_data = ?',survey_id,test).select('responses.question_id,
+    single_choice_responses = Response.joins(:response_set).where('survey_id = ? and test_data = ?',survey_id,test).select('responses.question_id, responses.answer_id,
 responses.float_value,
 responses.integer_value,
-responses.datetime_value, responses.string_value')
+responses.datetime_value, 
+responses.string_value')
     @chart = {}
     colors = ['#4572A7', '#AA4643', '#89A54E', '#80699B', '#3D96AE', '#DB843D', '#92A8CD', '#A47D7C', '#B5CA92']
     questions.each do |q|
@@ -63,17 +64,17 @@ responses.datetime_value, responses.string_value')
   private
 
   RESPONSE_GENERATOR = {
-    pick_one: ->(response, response_set, q, context){ response = response_set.responses.build(question_id: q.id, answer_id: context.send(:random_pick, q)) },
-    pick_any: ->(response, response_set, q, context){ response = context.send(:random_anys, response, response_set, q) },
-    dropdown: ->(response, response_set, q, context){ response = response_set.responses.build(question_id: q.id, answer_id: context.send(:random_pick, q)) },
-    number:   ->(response, response_set, q, context){ response.integer_value = rand(100) },
-    string:   ->(response, response_set, q, context){ response.string_value = context.send(:random_string) },
-    box:      ->(response, response_set, q, context){ response.text_value = context.send(:random_string) },
-    date:     ->(response, response_set, q, context){ response.datetime_value = context.send(:random_date) },
-    datetime: ->(response, response_set, q, context){ response.datetime_value = context.send(:random_date) },
-    time:     ->(response, response_set, q, context){ response.datetime_value = context.send(:random_date) },
+    pick_one: ->(response, response_set, q, context){ response_set.responses.create(question_id: q.id, answer_id: context.send(:random_pick, q)) },
+    pick_any: ->(response, response_set, q, context){ context.send(:random_anys, response, response_set, q) },
+    dropdown: ->(response, response_set, q, context){ response_set.responses.create(question_id: q.id, answer_id: context.send(:random_pick, q)) },
+    number:   ->(response, response_set, q, context){ response.integer_value = rand(100); response.save },
+    string:   ->(response, response_set, q, context){ response.string_value = context.send(:random_string); response.save },
+    box:      ->(response, response_set, q, context){ response.text_value = context.send(:random_string); response.save },
+    date:     ->(response, response_set, q, context){ response.datetime_value = context.send(:random_date); response.save },
+    datetime: ->(response, response_set, q, context){ response.datetime_value = context.send(:random_date); response.save },
+    time:     ->(response, response_set, q, context){ response.datetime_value = context.send(:random_date); response.save },
     file:     ->(response, response_set, q, context){ context.send(:make_blob, response, false) },
-    stars:    ->(response, response_set, q, context){ response = response_set.responses.build(:question_id => q.id, :integer_value => rand(5)+1, :answer_id => q.answers.first.id)}
+    stars:    ->(response, response_set, q, context){ response_set.responses.create(:question_id => q.id, :integer_value => rand(5)+1, :answer_id => q.answers.first.id)}
   }
   
   def generate_1_result_per_question(response_set, survey)
@@ -81,8 +82,7 @@ responses.datetime_value, responses.string_value')
       ss.questions.each do |q|
         response = response_set.responses.build(:question_id => q.id, :answer_id => q.answers.first.id)
         RESPONSE_GENERATOR[q.question_type_id].call(response, response_set, q, self)
-        p "q type #{q.question_type_id} response #{response.valid?}"
-        response.save! if response.valid?
+        p "q type #{q.question_type_id} response #{response.answer_id}"
       end
     end
   end
@@ -234,8 +234,9 @@ end
 class HistogramArray
   def initialize(question, in_arr, label=nil)
     @out_arr = []
-    @in_arr = in_arr
-    return if in_arr.blank?
+    p "in arr at init #{in_arr.map{|a| a}}"
+    @in_arr = in_arr.map{|a| a.response_value}
+    return if in_arr.empty?
     @question = question
     set_min
     set_max
@@ -245,13 +246,13 @@ class HistogramArray
   end
 
   def calculate
-    if !@in_arr.blank?
+    if !@in_arr.empty?
       @distribution.times do |index|
         refresh_range
         set_x_label
         @out_arr[index]= {
           :x => @x_label,
-          :y => @in_arr.select {|v| v.response_value.to_f >= @lower_bound && v.response_value.to_f < @upper_bound}.count
+          :y => @in_arr.select {|v| v.to_f >= @lower_bound && v.to_f < @upper_bound}.count
         }
       end
     end
@@ -261,16 +262,16 @@ class HistogramArray
   private
 
   def set_min
-    @min = @range = @in_arr.collect(&:response_value).min.to_f
+    @min = @range = @in_arr.min.to_f
   end
 
   def set_max
-    @max = @in_arr.collect(&:response_value).max.to_f
+    @max = @in_arr.max.to_f
     @max = @max + @max.abs*0.00000000001
   end
 
   def set_count
-    @count = @in_arr.count(:id)
+    @count = @in_arr.count
   end
 
   def set_distribution
