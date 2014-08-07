@@ -14,7 +14,7 @@
             = @question_no
             )&nbsp;#{q.text}
           - @question_no += 1
-        - if [:pick_one,:pick_any,:dropdown,:number,:date,:datetime,:time,:stars].include? q.question_type_id
+        - if [:pick_one,:pick_any,:dropdown,:number,:date,:datetime,:time,:stars,:slider].include? q.question_type_id
           %tr{:class => q.surveyresponse_class(@trial_response_sets)}
             %td &nbsp;
           %tr{:class => q.surveyresponse_class(@trial_response_sets)}
