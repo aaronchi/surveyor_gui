@@ -1,0 +1,9 @@
+%tr{:class => q.surveyresponse_class(@trial_response_sets)}
+  %td
+  %td{:colspan => "2"}
+    - if q.is_numbered? && !q.part_of_group?
+      = @question_no
+      )&nbsp;#{q.text}
+      - @question_no += 1
+    - else
+      = q.text
