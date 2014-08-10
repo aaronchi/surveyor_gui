@@ -31,12 +31,12 @@ module SurveyorGui
         { :questions => Survey.where(id: self.survey_id).includes(sections: :questions).first.sections.map(&:questions).flatten.compact.size,
           :responses => responses.to_a.compact.size,
           :correct => responses.find_all(&:correct?).compact.size
+        }
+      end
 
       def report_user_name
         self.user_id
       end
-        }
-      end     
     end
   end
 end
